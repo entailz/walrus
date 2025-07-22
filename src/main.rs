@@ -26,9 +26,10 @@ fn initialize_walrus() -> Result<(), Box<dyn std::error::Error>> {
         .to_path_buf();
     
     let possible_template_dirs = vec![
-        PathBuf::from("templates"), 
-        exe_dir.join("templates"),
-        exe_dir.parent().unwrap_or(&exe_dir).join("templates"), 
+        PathBuf::from("templates"),
+        PathBuf::from("/usr/share/walrus/templates"),
+        exe_dir.join("templates"), 
+        exe_dir.parent().unwrap_or(&exe_dir).join("templates"),
     ];
     
     let mut source_templates_dir = None;
@@ -199,18 +200,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Process template files
     // Check for template directory in the following order:
     // 1. Command line argument
-    // 2. Local templates directory
-    // 3. ~/.config/walrus/templates
+    // 2. User config directory (~/.config/walrus/templates)
+    // 3. Local templates directory (development)
+    // 4. System-wide templates (/usr/share/walrus/templates)
     let mut template_dirs = Vec::new();
     
     if let Some(template_path) = matches.get_one::<String>("templates") {
         template_dirs.push(PathBuf::from(template_path));
     }
     
-    template_dirs.push(PathBuf::from("templates"));
-    
     let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
     template_dirs.push(home_dir.join(".config/walrus/templates"));
+    template_dirs.push(PathBuf::from("templates"));
+    template_dirs.push(PathBuf::from("/usr/share/walrus/templates"));
     
     let mut processed_any = false;
     for template_dir in template_dirs {
@@ -234,8 +236,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     if !processed_any {
         println!("No template files found. Templates can be placed in:");
-        println!("  - ./templates");
-        println!("  - ~/.config/walrus/templates");
+        println!("  - ~/.config/walrus/templates (user templates)");
+        println!("  - ./templates (development)");
+        println!("  - /usr/share/walrus/templates (system-wide)");
         println!("  - Or specify with --templates <dir>");
     }
 
