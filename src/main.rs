@@ -13,6 +13,67 @@ use generator::PywalGenerator;
 use sequences::SequenceGenerator;
 use templates::TemplateGenerator;
 
+fn initialize_walrus() -> Result<(), Box<dyn std::error::Error>> {
+    let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+    let config_dir = home_dir.join(".config/walrus");
+    let templates_dir = config_dir.join("templates");
+    
+    fs::create_dir_all(&templates_dir)?;
+    
+    let exe_dir = std::env::current_exe()?
+        .parent()
+        .ok_or("Could not determine executable directory")?
+        .to_path_buf();
+    
+    let possible_template_dirs = vec![
+        PathBuf::from("templates"), 
+        exe_dir.join("templates"),
+        exe_dir.parent().unwrap_or(&exe_dir).join("templates"), 
+    ];
+    
+    let mut source_templates_dir = None;
+    for dir in possible_template_dirs {
+        if dir.exists() && dir.is_dir() {
+            source_templates_dir = Some(dir);
+            break;
+        }
+    }
+    
+    let source_dir = source_templates_dir
+        .ok_or("Could not find templates directory. Make sure templates/ exists in the project directory.")?;
+    
+    let mut copied_files = Vec::new();
+    for entry in fs::read_dir(&source_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        
+        if path.is_file() {
+            let file_name = path.file_name().unwrap();
+            let dest_path = templates_dir.join(file_name);
+            
+            fs::copy(&path, &dest_path)?;
+            copied_files.push(file_name.to_string_lossy().to_string());
+        }
+    }
+    
+    println!("✓ Created configuration directory: {}", config_dir.display());
+    println!("✓ Created templates directory: {}", templates_dir.display());
+    
+    if !copied_files.is_empty() {
+        println!("✓ Copied template files:");
+        for file in copied_files {
+            println!("  - {}", file);
+        }
+    }
+    
+    println!("\nWalrus has been initialized!");
+    println!("You can now:");
+    println!("  - Add custom templates to: {}", templates_dir.display());
+    println!("  - Run walrus with an image: walrus <image_path>");
+    
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = Command::new("pywal-haishoku")
         .about("A minimal pywal-style color generator using haishoku algorithm")
@@ -20,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("image")
                 .help("The image file to process")
-                .required(true)
+                .required(false)
                 .index(1),
         )
         .arg(
@@ -57,9 +118,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Directory containing template files to process")
                 .value_name("TEMPLATES_DIR"),
         )
+        .arg(
+            Arg::new("init")
+                .short('u')
+                .long("init")
+                .help("Initialize walrus by creating ~/.config/walrus and copying templates")
+                .action(clap::ArgAction::SetTrue),
+        )
         .get_matches();
 
-    let image_path = matches.get_one::<String>("image").unwrap();
+    if matches.get_flag("init") {
+        return initialize_walrus();
+    }
+
+    let image_path = matches.get_one::<String>("image")
+        .ok_or("Image path is required. Use --help for usage information.")?;
     let output_dir_str = matches.get_one::<String>("output").unwrap();
     let saturation: f32 = matches.get_one::<String>("saturation").unwrap().parse()?;
     let strip_hash = matches.get_flag("strip");
@@ -75,7 +148,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         PathBuf::from(output_dir_str)
     };
 
-    // Create output directory
     fs::create_dir_all(&output_dir)?;
 
     let mut generator = PywalGenerator::new();
@@ -137,11 +209,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     template_dirs.push(PathBuf::from("templates"));
     
-    // 3. Check ~/.config/walrus/templates
     let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
     template_dirs.push(home_dir.join(".config/walrus/templates"));
     
-    // Process the first valid template directory
     let mut processed_any = false;
     for template_dir in template_dirs {
         if template_dir.exists() && template_dir.is_dir() {
