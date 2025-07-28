@@ -201,8 +201,8 @@ impl Haishoku {
 
         palette
     }
-}#
-[cfg(test)]
+}
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -246,3 +246,4 @@ mod tests {
         assert!(haishoku.color_distance(&color1, &color3) > 0.0);
     }
 }
+

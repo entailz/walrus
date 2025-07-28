@@ -1,6 +1,6 @@
 use crate::color::Color;
-use std::fs;
 use glob;
+use std::fs;
 
 // Term sequences gen
 pub struct SequenceGenerator {
@@ -75,10 +75,10 @@ impl SequenceGenerator {
         let cursor = foreground;
 
         sequences.push_str(&self.set_special(10, foreground, "g"));
-        sequences.push_str(&self.set_special(11, background, "h")); 
+        sequences.push_str(&self.set_special(11, background, "h"));
         sequences.push_str(&self.set_special(12, cursor, "l"));
         sequences.push_str(&self.set_special(13, foreground, "l"));
-        sequences.push_str(&self.set_special(17, foreground, "l")); 
+        sequences.push_str(&self.set_special(17, foreground, "l"));
         sequences.push_str(&self.set_special(19, background, "l"));
         sequences.push_str(&self.set_color(232, background));
         sequences.push_str(&format!("\x1b]4;256;{}\x1b\\", foreground.to_hex()));
@@ -98,17 +98,17 @@ impl SequenceGenerator {
     pub fn generate_sequences(&self, vte_fix: bool) -> String {
         self.create_sequences(vte_fix)
     }
-    
+
     // Send sequences to all open terminals
     pub fn send_sequences_to_terminals(&self, vte_fix: bool) -> std::io::Result<()> {
         let sequences = self.generate_sequences(vte_fix);
-        
+
         #[cfg(target_os = "macos")]
         let tty_pattern = "/dev/ttys00[0-9]*";
-        
+
         #[cfg(not(target_os = "macos"))]
         let tty_pattern = "/dev/pts/[0-9]*";
-        
+
         for entry in glob::glob(tty_pattern).expect("Failed to read tty pattern") {
             if let Ok(path) = entry {
                 // Try to write sequences to the terminal
@@ -117,7 +117,8 @@ impl SequenceGenerator {
                 }
             }
         }
-        
+
         Ok(())
     }
 }
+

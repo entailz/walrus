@@ -97,3 +97,4 @@ impl PywalGenerator {
         Ok(adjusted_colors)
     }
 }
+

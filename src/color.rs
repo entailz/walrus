@@ -171,3 +171,4 @@ mod tests {
         assert!(dark_color.to_yiq() < light_color.to_yiq());
     }
 }
+
